@@ -1,0 +1,21 @@
+{
+  "name": "Store Builder AI",
+  "short_name": "StoreBuilder",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0B1326",
+  "theme_color": "#0EA5E9",
+  "description": "Herramienta de diseño retail con IA y Realidad Aumentada.",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
