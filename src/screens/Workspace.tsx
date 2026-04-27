@@ -1,14 +1,13 @@
 import React, { useRef, useState } from 'react';
 import { useStore, Asset, formatCurrencyCOP } from '../store/useStore';
 import { clsx } from 'clsx';
-import { RefreshCw, Trash, Image as ImageIcon, Camera } from 'lucide-react';
+import { RefreshCw, Trash } from 'lucide-react'; // <-- Dejamos solo los íconos básicos que ya sabíamos que funcionaban
 
 export const Workspace = () => {
   const { baseStoreImageUrl, setBaseStoreImageUrl, catalog, placedAssets, placeAsset, updateAssetPosition, removeAsset } = useStore();
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  // 1. Manejo de carga de imagen
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -18,7 +17,6 @@ export const Workspace = () => {
     }
   };
 
-  // 2. Lógica de Arrastre (Catálogo -> Workspace y Movimiento Interno)
   const handleDragStart = (e: React.DragEvent, asset: Asset | string, isInternal: boolean = false) => {
     if (isInternal) {
       e.dataTransfer.setData('movingInstanceId', asset as string);
@@ -38,10 +36,8 @@ export const Workspace = () => {
     const movingInstanceId = e.dataTransfer.getData('movingInstanceId');
 
     if (movingInstanceId) {
-      // Si el objeto ya existe, actualizamos su posición
       updateAssetPosition(movingInstanceId, { x, y });
     } else {
-      // Si es un objeto nuevo del catálogo
       try {
         const data = e.dataTransfer.getData('application/json');
         const asset = JSON.parse(data) as Asset;
@@ -54,15 +50,15 @@ export const Workspace = () => {
     <div className="flex h-full bg-surface">
       <div className="flex-1 relative overflow-hidden flex items-center justify-center p-8 bg-surface-dim">
         
-        {/* Controles de Carga */}
+        {/* Controles de Carga (Sin iconos de Lucide para evitar crash) */}
         <div className="absolute top-6 left-6 z-50 flex gap-3">
           <label className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg cursor-pointer shadow-xl transition-all text-xs font-bold uppercase tracking-widest border border-primary/20">
             <input type="file" accept="image/*" onChange={handleFileChange} hidden />
-            <ImageIcon size={16} /> Cargar Local
+            <span>📂 Cargar Local</span>
           </label>
           <label className="flex items-center gap-2 bg-surface-bright border border-outline hover:bg-surface text-on-surface px-4 py-2 rounded-lg cursor-pointer shadow-xl transition-all text-xs font-bold uppercase tracking-widest">
-            <input type="file" accept="image/*" capture="environment" onChange={handleFileChange} hidden />
-            <Camera size={16} /> Cámara
+            <input type="file" accept="image/*" onChange={handleFileChange} hidden />
+            <span>📸 Cámara</span>
           </label>
         </div>
 
@@ -82,12 +78,9 @@ export const Workspace = () => {
           
           <div className="absolute inset-0 perspective-grid pointer-events-none opacity-10"></div>
 
-          {/* Renderizado de Objetos con Perspectiva */}
+          {/* Renderizado de Objetos */}
           {placedAssets.map(asset => {
             const isSelected = selectedAssetId === asset.instanceId;
-            
-            // FÓRMULA DE ESCALA: Basada en la profundidad del local (Eje Y)
-            // En Y=0 (fondo): escala 0.25 | En Y=100 (frente): escala 1.0
             const perspectiveScale = 0.25 + (asset.position.y / 100) * 0.75;
             
             return (
@@ -103,7 +96,6 @@ export const Workspace = () => {
                 style={{
                   left: `${asset.position.x}%`,
                   top: `${asset.position.y}%`,
-                  // Punto de anclaje en la base (pies) para que "pisen" el suelo
                   transform: `translate(-50%, -90%) scale(${perspectiveScale})`,
                 }}
               >
@@ -116,10 +108,7 @@ export const Workspace = () => {
                     )} 
                     alt={asset.name} 
                   />
-                  
-                  {/* SOMBRA DINÁMICA: Cambia de tamaño con el objeto */}
                   <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-[80%] h-4 bg-black/40 blur-md rounded-[100%] -z-10 scale-y-50"></div>
-
                   {isSelected && (
                     <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex gap-2 bg-surface-bright border border-primary p-1 rounded shadow-xl">
                       <button 
@@ -144,7 +133,6 @@ export const Workspace = () => {
         </div>
       </div>
 
-      {/* Catálogo e Inspector */}
       <aside className="w-80 border-l border-outline-variant bg-surface flex flex-col overflow-y-auto">
         <div className="p-6 border-b border-outline-variant bg-surface-bright/50">
           <h3 className="font-mono text-[10px] text-on-surface-variant uppercase tracking-[0.2em] font-black">Catálogo Regional COL</h3>
