@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+// 1. Cambiamos BrowserRouter por HashRouter
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { AssetLibrary } from './screens/AssetLibrary';
 import { Workspace } from './screens/Workspace';
@@ -13,7 +14,8 @@ import { Proposal } from './screens/Proposal';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    // 2. Implementamos HashRouter para compatibilidad total con móviles y GitHub Pages
+    <HashRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<AssetLibrary />} />
@@ -24,6 +26,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
