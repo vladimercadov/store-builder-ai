@@ -1,167 +1,140 @@
-import React, { useRef, useState } from 'react';
-import { useStore, Asset, formatCurrencyCOP } from '../store/useStore';
-import { clsx } from 'clsx';
-import { RefreshCw, Trash } from 'lucide-react';
+import React, { useRef } from 'react';
+import { useStore, GeometryType } from '../store/useStore';
+import { Box, User, Ruler, Layout, Camera, Trash2, Download } from 'lucide-react';
 
 export const Workspace = () => {
-  const { baseStoreImageUrl, setBaseStoreImageUrl, catalog, placedAssets, placeAsset, updateAssetPosition, removeAsset } = useStore();
-  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const { 
+    sceneImage, setSceneImage, 
+    placedObjects, addObject, 
+    updateObject, removeObject 
+  } = useStore();
+  
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  const selectedPlacedAsset = placedAssets.find(a => a.instanceId === selectedAssetId);
-
-  // Función para determinar qué imagen mostrar según la posición X
-  const getPerspectiveImage = (asset: any) => {
-    if (!asset.views) return asset.imageUrl; // Si no tiene múltiples vistas, usa la normal
-    
-    const x = asset.position.x;
-    if (x < 35) return asset.views.left;
-    if (x > 65) return asset.views.right;
-    return asset.views.front;
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Función para manejar la carga de la foto del local
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (event) => setBaseStoreImageUrl(event.target?.result as string);
+      reader.onload = (ev) => setSceneImage(ev.target?.result as string);
       reader.readAsDataURL(file);
     }
   };
 
-  const handleDragStart = (e: React.DragEvent, asset: Asset | string, isInternal: boolean = false) => {
-    if (isInternal) {
-      e.dataTransfer.setData('movingInstanceId', asset as string);
-    } else {
-      e.dataTransfer.setData('application/json', JSON.stringify(asset));
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (!canvasRef.current) return;
+  // Lógica de "Falsa Perspectiva" para los estilos CSS
+  const getObjectStyle = (obj: any): React.CSSProperties => {
+    // Calculamos la escala basada en la altura (Y) para dar profundidad
+    const perspectiveScale = 0.5 + (obj.position.y / 100) * 0.5;
     
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-    const movingInstanceId = e.dataTransfer.getData('movingInstanceId');
-
-    if (movingInstanceId) {
-      updateAssetPosition(movingInstanceId, { x, y });
-    } else {
-      try {
-        const data = e.dataTransfer.getData('application/json');
-        const asset = JSON.parse(data) as Asset;
-        placeAsset(asset, { x, y });
-      } catch(err) { /* ignore */ }
-    }
+    return {
+      left: `${obj.position.x}%`,
+      top: `${obj.position.y}%`,
+      width: `${obj.size.width * perspectiveScale}%`,
+      height: `${obj.size.height * perspectiveScale}%`,
+      backgroundColor: obj.color,
+      zIndex: Math.round(obj.position.y),
+      transform: `translate(-50%, -100%) skewY(${obj.rotation}deg)`,
+      opacity: 0.85,
+      boxShadow: `0 ${10 * perspectiveScale}px ${20 * perspectiveScale}px rgba(0,0,0,0.3)`,
+      position: 'absolute',
+      cursor: 'move',
+      border: '1px solid rgba(255,255,255,0.2)'
+    };
   };
 
   return (
-    <div className="flex h-full bg-surface">
-      <div className="flex-1 relative overflow-hidden flex items-center justify-center p-8 bg-surface-dim">
-        
-        <div className="absolute top-6 left-6 z-50 flex gap-3">
-          <label className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg cursor-pointer shadow-xl transition-all text-xs font-bold uppercase tracking-widest border border-primary/20">
-            <input type="file" accept="image/*" onChange={handleFileChange} hidden />
-            <span>📂 Cargar Local</span>
-          </label>
-        </div>
-
+    <div className="flex flex-col h-screen bg-black text-white overflow-hidden">
+      
+      {/* 1. ÁREA DE TRABAJO (CENTRO) */}
+      <div className="flex-1 relative bg-zinc-900 flex items-center justify-center p-4">
         <div 
           ref={canvasRef}
-          onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
-          className="w-full max-w-6xl aspect-video rounded-xl shadow-2xl relative border border-outline-variant overflow-hidden bg-black/20"
+          className="relative w-full h-full max-w-4xl aspect-[9/16] md:aspect-video bg-zinc-800 rounded-xl overflow-hidden shadow-2xl border border-zinc-700"
         >
-          {baseStoreImageUrl ? (
-            <img src={baseStoreImageUrl} className="absolute inset-0 w-full h-full object-contain" alt="Local" />
+          {/* Foto del Local */}
+          {sceneImage ? (
+            <img src={sceneImage} className="absolute inset-0 w-full h-full object-cover" alt="Local" />
           ) : (
-            <div className="absolute inset-0 bg-surface-bright flex items-center justify-center text-on-surface-variant font-mono text-sm uppercase tracking-tighter text-center px-4">
-              Esperando captura de local...<br/>Carga una foto para activar el Technical Engine
+            <div className="absolute inset-0 flex flex-col items-center justify-center opacity-30">
+              <Camera size={48} className="mb-2" />
+              <p className="text-sm">CARGAR FOTO DEL LOCAL</p>
             </div>
           )}
-          
-          <div className="absolute inset-0 perspective-grid pointer-events-none opacity-10"></div>
 
-          {placedAssets.map(asset => {
-            const isSelected = selectedAssetId === asset.instanceId;
-            const perspectiveScale = 0.25 + (asset.position.y / 100) * 0.75;
-            
-            // --- AQUÍ SE ACTIVA LA MAGIA ---
-            const currentImage = getPerspectiveImage(asset);
-            
-            return (
-              <div
-                key={asset.instanceId}
-                draggable
-                onDragStart={(e) => handleDragStart(e, asset.instanceId, true)}
-                onClick={(e) => { e.stopPropagation(); setSelectedAssetId(asset.instanceId); }}
-                className={clsx(
-                  "absolute flex items-center justify-center cursor-move transition-all duration-150 ease-out",
-                  isSelected ? "z-40" : "z-20"
-                )}
-                style={{
-                  left: `${asset.position.x}%`,
-                  top: `${asset.position.y}%`,
-                  transform: `translate(-50%, -90%) scale(${perspectiveScale})`,
-                }}
+          {/* Renderizado de Objetos Geométricos */}
+          {placedObjects.map((obj) => (
+            <div
+              key={obj.instanceId}
+              style={getObjectStyle(obj)}
+              onClick={() => {/* Seleccionar para editar */}}
+              className="transition-all duration-200"
+            >
+              {/* Etiqueta de tipo (opcional para debug) */}
+              <span className="absolute -top-6 left-0 text-[10px] font-bold uppercase tracking-tighter opacity-50">
+                {obj.type}
+              </span>
+              
+              {/* Botón de eliminar rápido */}
+              <button 
+                onClick={(e) => { e.stopPropagation(); removeObject(obj.instanceId); }}
+                className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 opacity-0 hover:opacity-100 transition-opacity"
               >
-                <div className="relative group">
-                  <img 
-                    src={currentImage} 
-                    className={clsx(
-                      "w-48 h-48 object-contain transition-all",
-                      isSelected ? "drop-shadow-[0_0_20px_#0ea5e9]" : "drop-shadow-[0_15px_15px_rgba(0,0,0,0.6)]"
-                    )} 
-                    alt={asset.name} 
-                  />
-                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-[80%] h-4 bg-black/40 blur-md rounded-[100%] -z-10 scale-y-50"></div>
-                  {isSelected && (
-                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex gap-2 bg-surface-bright border border-primary p-1 rounded shadow-xl">
-                      <button 
-                        onClick={() => { removeAsset(asset.instanceId); setSelectedAssetId(null); }}
-                        className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white p-1.5 rounded transition-colors"
-                      >
-                        <Trash size={14} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                <Trash2 size={12} />
+              </button>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Sidebar de catálogo (mantenemos igual) */}
-      <aside className="w-80 border-l border-outline-variant bg-surface flex flex-col overflow-y-auto">
-        <div className="p-6 border-b border-outline-variant bg-surface-bright/50">
-          <h3 className="font-mono text-[10px] text-on-surface-variant uppercase tracking-[0.2em] font-black">Catálogo Regional COL</h3>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-             {catalog.map(asset => (
-                <div 
-                  key={asset.id}
-                  draggable={asset.stock > 0}
-                  onDragStart={(e) => asset.stock > 0 && handleDragStart(e, asset)}
-                  className={clsx(
-                    "aspect-square relative bg-surface-dim border border-outline rounded-lg p-2 flex items-center justify-center group transition-all",
-                    asset.stock === 0 ? "opacity-30 cursor-not-allowed" : "cursor-grab active:cursor-grabbing hover:border-primary"
-                  )}
-                >
-                  <img src={asset.imageUrl} className="w-full h-full object-contain pointer-events-none" alt={asset.name} />
-                </div>
-             ))}
-          </div>
+      {/* 2. BARRA DE ACCIÓN INFERIOR (ESTILO INSTAGRAM) */}
+      <div className="bg-zinc-950 border-t border-zinc-800 pb-8 pt-4 px-6">
+        <div className="flex justify-between items-center max-w-md mx-auto">
+          
+          <ToolButton 
+            icon={<Ruler />} 
+            label="Riel" 
+            onClick={() => addObject('rail')} 
+          />
+          <ToolButton 
+            icon={<Layout />} 
+            label="Repisa" 
+            onClick={() => addObject('shelf')} 
+          />
+          <ToolButton 
+            icon={<Box />} 
+            label="Mueble" 
+            onClick={() => addObject('box')} 
+          />
+          <ToolButton 
+            icon={<User />} 
+            label="Maniquí" 
+            onClick={() => addObject('human-shape')} 
+          />
+          
+          {/* Botón de Foto separado */}
+          <label className="flex flex-col items-center gap-1 cursor-pointer">
+            <div className="bg-blue-600 p-3 rounded-full shadow-lg shadow-blue-900/20">
+              <Camera size={20} />
+            </div>
+            <span className="text-[10px] font-medium opacity-70 uppercase">Foto</span>
+            <input type="file" className="hidden" onChange={handlePhotoUpload} accept="image/*" />
+          </label>
+
         </div>
-        {selectedPlacedAsset && (
-           <div className="p-6">
-              <h4 className="text-[11px] font-black text-primary uppercase">{selectedPlacedAsset.name}</h4>
-              <p className="text-sm font-black text-on-surface mt-2">{formatCurrencyCOP(selectedPlacedAsset.priceCOP)}</p>
-           </div>
-        )}
-      </aside>
+      </div>
     </div>
   );
 };
+
+// Componente auxiliar para los botones de la barra
+const ToolButton = ({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick: () => void }) => (
+  <button 
+    onClick={onClick}
+    className="flex flex-col items-center gap-1 active:scale-90 transition-transform"
+  >
+    <div className="bg-zinc-800 p-3 rounded-2xl border border-zinc-700">
+      {icon}
+    </div>
+    <span className="text-[10px] font-medium opacity-70 uppercase tracking-wider">{label}</span>
+  </button>
+);
