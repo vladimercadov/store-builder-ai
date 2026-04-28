@@ -1,124 +1,61 @@
 import { create } from 'zustand';
 
-// 1. Definición de Categorías según tu modelo de negocio
-export type AssetCategory = 
-  | '1-maniquies' 
-  | '2-accesorios' 
-  | '3-muebles-pago' 
-  | '4-exhibidores';
+// Definimos los tipos de figuras geométricas que hablamos
+export type GeometryType = 'rail' | 'shelf' | 'box' | 'human-shape';
 
-export type AnchorLogic = 'floor' | 'wall';
-
-export interface AssetViews {
-  left: string;
-  front: string;
-  right: string;
-}
-
-export interface Asset {
-  id: string;
-  sku: string;
-  name: string;
-  category: AssetCategory;
-  priceCOP: number;
-  dimensions: string;
-  anchorType: AnchorLogic;
-  stock: number;
-  imageUrl: string;
-  views?: AssetViews;
-}
-
-export interface PlacedAsset extends Asset {
+export interface DesignObject {
   instanceId: string;
+  type: GeometryType;
   position: { x: number; y: number };
-  rotation: number;
+  size: { width: number; height: number; depth: number };
+  rotation: number; // Para la perspectiva de la pared
+  color: string;
+  texture?: 'wood' | 'metal' | 'plastic';
 }
 
-interface StoreState {
-  catalog: Asset[];
-  placedAssets: PlacedAsset[];
-  baseStoreImageUrl: string | null;
-  setBaseStoreImageUrl: (url: string) => void;
-  placeAsset: (asset: Asset, position: { x: number; y: number }) => void;
-  updateAssetPosition: (instanceId: string, position: { x: number; y: number }) => void;
-  removeAsset: (instanceId: string) => void;
-  clearWorkspace: () => void;
+interface DesignStore {
+  sceneImage: string | null;
+  placedObjects: DesignObject[];
+  setSceneImage: (url: string) => void;
+  addObject: (type: GeometryType) => void;
+  updateObject: (id: string, updates: Partial<DesignObject>) => void;
+  removeObject: (id: string) => void;
+  clearScene: () => void;
 }
 
-// 2. Catálogo organizado por tus categorías de negocio
-const mockCatalog: Asset[] = [
-  {
-    id: 'mnqn-dama-01',
-    sku: 'MQ-D01',
-    name: 'Maniquí Dama Abstracto',
-    category: '1-maniquies',
-    priceCOP: 650000,
-    dimensions: '180cm x 60cm',
-    anchorType: 'floor',
-    stock: 12,
-    imageUrl: 'assets/catalog/1-maniquies/dama/frontal.png',
-    views: {
-      left: 'assets/catalog/1-maniquies/dama/izq.png',
-      front: 'assets/catalog/1-maniquies/dama/frontal.png',
-      right: 'assets/catalog/1-maniquies/dama/der.png'
-    }
-  },
-  {
-    id: 'flauta-01',
-    sku: 'AC-F01',
-    name: 'Flauta 7 Pernos para Riel',
-    category: '2-accesorios',
-    priceCOP: 35000,
-    dimensions: '30cm',
-    anchorType: 'wall',
-    stock: 50,
-    imageUrl: 'assets/catalog/2-accesorios/flauta_frontal.png'
-  },
-  {
-    id: 'pago-01',
-    sku: 'MB-P01',
-    name: 'Punto de Pago Minimalista L',
-    category: '3-muebles-pago',
-    priceCOP: 1800000,
-    dimensions: '120cm x 60cm x 90cm',
-    anchorType: 'floor',
-    stock: 3,
-    imageUrl: 'assets/catalog/3-muebles-pago/frontal.png'
-  }
-];
+export const useStore = create<DesignStore>((set) => ({
+  sceneImage: null,
+  placedObjects: [],
 
-export const useStore = create<StoreState>((set) => ({
-  catalog: mockCatalog,
-  placedAssets: [],
-  baseStoreImageUrl: null,
-  
-  setBaseStoreImageUrl: (url) => set({ baseStoreImageUrl: url }),
-  
-  placeAsset: (asset, position) => set((state) => ({
-    placedAssets: [
-      ...state.placedAssets,
-      { ...asset, instanceId: Math.random().toString(36).substring(2, 9), position, rotation: 0 }
+  setSceneImage: (url) => set({ sceneImage: url }),
+
+  addObject: (type) => set((state) => ({
+    placedObjects: [
+      ...state.placedObjects,
+      {
+        instanceId: Math.random().toString(36).substring(7),
+        type,
+        position: { x: 50, y: 50 }, // Aparece en el centro
+        size: { 
+            width: type === 'rail' ? 2 : 20, 
+            height: type === 'rail' ? 80 : 5, 
+            depth: 10 
+        },
+        rotation: 0,
+        color: type === 'rail' ? '#333' : '#ddd',
+      }
     ]
   })),
 
-  updateAssetPosition: (instanceId, position) => set((state) => ({
-    placedAssets: state.placedAssets.map(a => 
-      a.instanceId === instanceId ? { ...a, position } : a
+  updateObject: (id, updates) => set((state) => ({
+    placedObjects: state.placedObjects.map(obj => 
+      obj.instanceId === id ? { ...obj, ...updates } : obj
     )
   })),
 
-  removeAsset: (instanceId) => set((state) => ({
-    placedAssets: state.placedAssets.filter(a => a.instanceId !== instanceId)
+  removeObject: (id) => set((state) => ({
+    placedObjects: state.placedObjects.filter(obj => obj.instanceId !== id)
   })),
 
-  clearWorkspace: () => set({ placedAssets: [] })
+  clearScene: () => set({ placedObjects: [] })
 }));
-
-export const formatCurrencyCOP = (amount: number) => {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
