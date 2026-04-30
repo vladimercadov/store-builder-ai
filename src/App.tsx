@@ -1,4 +1,4 @@
-import { Workspace } from './components/Workspace';
+import { Workspace } from './components/Workspace'; // El './' es la clave mágica
 
 function App() {
   return (
