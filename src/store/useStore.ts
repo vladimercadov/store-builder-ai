@@ -1,61 +1,54 @@
+// src/store/useStore.ts
 import { create } from 'zustand';
+import { STANDARDS } from '../constants/standards';
 
-// Definimos los tipos de figuras geométricas que hablamos
-export type GeometryType = 'rail' | 'shelf' | 'box' | 'human-shape';
-
-export interface DesignObject {
-  instanceId: string;
-  type: GeometryType;
-  position: { x: number; y: number };
-  size: { width: number; height: number; depth: number };
-  rotation: number; // Para la perspectiva de la pared
-  color: string;
-  texture?: 'wood' | 'metal' | 'plastic';
+interface Elemento {
+  id: string;
+  tipo: string;
+  posicion: [number, number, number];
+  dimensiones: any;
+  material: string;
 }
 
-interface DesignStore {
-  sceneImage: string | null;
-  placedObjects: DesignObject[];
-  setSceneImage: (url: string) => void;
-  addObject: (type: GeometryType) => void;
-  updateObject: (id: string, updates: Partial<DesignObject>) => void;
-  removeObject: (id: string) => void;
-  clearScene: () => void;
+interface StoreState {
+  elementos: Elemento[];
+  selectedId: string | null;
+  historial: Elemento[][];
+  setSelect: (id: string | null) => void;
+  addElemento: (tipo: string) => void;
+  updateMaterial: (id: string, material: string) => void;
+  undo: () => void;
 }
 
-export const useStore = create<DesignStore>((set) => ({
-  sceneImage: null,
-  placedObjects: [],
+export const useStore = create<StoreState>((set) => ({
+  elementos: [],
+  selectedId: null,
+  historial: [],
 
-  setSceneImage: (url) => set({ sceneImage: url }),
+  setSelect: (id) => set({ selectedId: id }),
 
-  addObject: (type) => set((state) => ({
-    placedObjects: [
-      ...state.placedObjects,
-      {
-        instanceId: Math.random().toString(36).substring(7),
-        type,
-        position: { x: 50, y: 50 }, // Aparece en el centro
-        size: { 
-            width: type === 'rail' ? 2 : 20, 
-            height: type === 'rail' ? 80 : 5, 
-            depth: 10 
-        },
-        rotation: 0,
-        color: type === 'rail' ? '#333' : '#ddd',
-      }
-    ]
+  addElemento: (tipo) => set((state) => {
+    const nuevo = {
+      id: Math.random().toString(),
+      tipo,
+      posicion: [0, 0, 0],
+      material: 'CROMO',
+      dimensiones: tipo === 'RIEL' ? STANDARDS.RIEL : STANDARDS.REPISA
+    };
+    const nuevosElementos = [...state.elementos, nuevo];
+    // Mantener solo 5 pasos de historial
+    const nuevoHistorial = [...state.historial, state.elementos].slice(-5);
+    return { elementos: nuevosElementos, historial: nuevoHistorial, selectedId: nuevo.id };
+  }),
+
+  updateMaterial: (id, material) => set((state) => ({
+    elementos: state.elementos.map(el => el.id === id ? { ...el, material } : el)
   })),
 
-  updateObject: (id, updates) => set((state) => ({
-    placedObjects: state.placedObjects.map(obj => 
-      obj.instanceId === id ? { ...obj, ...updates } : obj
-    )
-  })),
-
-  removeObject: (id) => set((state) => ({
-    placedObjects: state.placedObjects.filter(obj => obj.instanceId !== id)
-  })),
-
-  clearScene: () => set({ placedObjects: [] })
+  undo: () => set((state) => {
+    if (state.historial.length === 0) return state;
+    const anterior = state.historial[state.historial.length - 1];
+    return { elementos: anterior, historial: state.historial.slice(0, -1) };
+  })
 }));
+ 
