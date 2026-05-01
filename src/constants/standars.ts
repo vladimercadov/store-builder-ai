@@ -1,5 +1,6 @@
+// src/constants/standards.ts
 export const STANDARDS = {
-  RIEL: { altura: 200, ancho: 5 }, // cm
+  RIEL: { altura: 200, ancho: 5 },
   ACCESORIO: { largo: 30 },
   REPISA: { profundidad: 35 },
   MUEBLE: { altura: 110, profundidad: 50, anchos: [50, 120, 150] },
